@@ -16,7 +16,7 @@ An interactive dashboard for telecom revenue analytics, billing, collections, an
 
 ## Live Demo
 
-**[Open AI Telecom Intelligence Dashboard](https://chandels-ai-telecom-intelligence.hf.space/)**
+**[Open AI Telecom Intelligence Dashboard](https://huggingface.co/spaces/chandels/ai-telecom-intelligence)**
 
 ## Features
 
