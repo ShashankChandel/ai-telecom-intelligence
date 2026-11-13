@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telecom Revenue & Network Intelligence</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#071426;--panel:#112941;--border:#1d5268;--teal:#52e0d0;--text:#e5f4ff;--muted:#a9c1d4}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,#071426,#0b1d32);color:var(--text)}
+header,main,footer{max-width:1500px;margin:auto;padding-left:24px;padding-right:24px}header{padding-top:28px;padding-bottom:14px}h1,h2{color:var(--teal);margin:0 0 8px}h1{font-size:clamp(1.6rem,3vw,2.3rem)}p{color:var(--muted);margin:6px 0}
+main{padding-top:12px;padding-bottom:28px}.filters,.metric,.chart,.table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:12px}.filters{padding:16px;display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px;margin-bottom:16px}
+label{display:block;color:var(--muted);font-size:.9rem;margin-bottom:6px}select{width:100%;min-height:110px;padding:8px;border-radius:8px;border:1px solid var(--border);background:#071a2c;color:var(--text)}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;grid-column:1/-1}button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;background:var(--teal);color:#06202a;font-weight:700}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}.metrics.secondary{grid-template-columns:repeat(3,minmax(0,1fr))}.metric{padding:16px;min-height:90px}.metric .label{color:var(--muted);font-size:.88rem;margin-bottom:10px}.metric .value{font-size:clamp(1.2rem,2.2vw,1.8rem);font-weight:750;overflow-wrap:anywhere}
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 24px}.chart{padding:10px;min-width:0}.chart h2{font-size:1.1rem;padding:8px 10px 0}.plot{height:340px;width:100%}
+.table-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin:20px 0 10px}.table-head select{min-height:unset;width:auto;min-width:190px}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:.9rem;white-space:nowrap}th,td{padding:10px 12px;border-bottom:1px solid #24465e;text-align:left}th{position:sticky;top:0;background:#16364f;color:var(--teal)}tr:hover td{background:#17354d}
+.pill{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.78rem;font-weight:700}.high{background:#5b2630;color:#ffdce0}.medium{background:#5a4820;color:#ffedb1}.none{background:#24465e;color:#d9eaf7}
+.notice{padding:14px;border:1px solid #8c6333;border-radius:10px;background:#332a1b;color:#ffe6b9;margin:12px 0}.error{border-color:#9b4040;background:#351e24;color:#ffd7d7}footer{padding-bottom:24px;color:var(--muted);font-size:.85rem}
+@media(max-width:850px){.filters,.charts{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metrics.secondary{grid-template-columns:repeat(2,minmax(0,1fr))}.plot{height:300px}}
+@media(max-width:480px){main,header,footer{padding-left:12px;padding-right:12px}.metrics,.metrics.secondary{grid-template-columns:1fr 1fr;gap:8px}.metric{padding:12px}}
+</style></head>
+<body>
+<header><h1>Telecom Revenue &amp; Network Intelligence</h1><p>Synthetic portfolio dataset | Revenue assurance and anomaly monitoring</p></header>
+<main>
+<div id="status" class="notice">Loading synthetic telecom dataset…</div>
+<section class="filters">
+<div><label for="regions">Select regions (Ctrl/Cmd-click for multiple)</label><select id="regions" multiple></select></div>
+<div><label for="services">Select services (Ctrl/Cmd-click for multiple)</label><select id="services" multiple></select></div>
+<div><label for="priorities">Alert priority (Ctrl/Cmd-click for multiple)</label><select id="priorities" multiple></select></div>
+<div class="actions"><button id="apply">Apply filters</button><button id="reset" type="button">Reset filters</button><span id="recordCount" aria-live="polite"></span></div>
+</section>
+<section class="metrics">
+<div class="metric"><div class="label">Records</div><div class="value" id="kRecords">—</div></div><div class="metric"><div class="label">Revenue</div><div class="value" id="kRevenue">—</div></div><div class="metric"><div class="label">Billed Amount</div><div class="value" id="kBilled">—</div></div><div class="metric"><div class="label">Potential Alerts</div><div class="value" id="kAlerts">—</div></div></section>
+<section class="metrics secondary"><div class="metric"><div class="label">High-Priority Records</div><div class="value" id="kHigh">—</div></div><div class="metric"><div class="label">Collections</div><div class="value" id="kCollections">—</div></div><div class="metric"><div class="label">Revenue-Billing Gap</div><div class="value" id="kGap">—</div></div></section>
+<section class="charts"><div class="chart"><h2>Revenue by Region</h2><div id="regionChart" class="plot"></div></div><div class="chart"><h2>Potential Alerts by Priority</h2><div id="priorityChart" class="plot"></div></div><div class="chart"><h2>Monthly Revenue Trend</h2><div id="monthlyChart" class="plot"></div></div><div class="chart"><h2>Potential Alerts by Region</h2><div id="alertsRegionChart" class="plot"></div></div></section>
+<div class="table-head"><div><h2>Anomaly Investigation</h2><p>Flagged records for review; flags are not confirmed losses or fraud.</p></div><div><label for="investigateRegion">Investigate region</label><select id="investigateRegion"><option value="All regions">All regions</option></select></div><button id="download">Download filtered alerts CSV</button></div>
+<div class="table-wrap"><table><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table></div><div id="emptyAlerts" class="notice" hidden>No potential anomalies found for the selected filters.</div>
+</main><footer>Portfolio demonstration using synthetic data. Alerts are rule-based indicators, not confirmed revenue losses or fraud.</footer>
+<script>
+(()=>{"use strict";
+const DATA_URL="./data/telecom_revenue_data.csv";
+const required=["record_id","region","service_type","month","monthly_revenue","billed_amount","activation_delay_days","collection_amount"];
+const cols=["record_id","region","service_type","month","monthly_revenue","billed_amount","billing_gap","activation_delay_days","collection_amount","collection_gap","anomaly_score","priority"];
+const $=id=>document.getElementById(id);let allRows=[],filteredRows=[],alertRows=[];
+const fmtInt=n=>Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:0}),fmtMoney=n=>"₹"+Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:0}),fmtCr=n=>"₹"+(Number(n||0)/1e7).toFixed(2)+" Cr";
+const sum=(rows,key)=>rows.reduce((a,r)=>a+(Number(r[key])||0),0);
+const uniq=(rows,key)=>[...new Set(rows.map(r=>String(r[key]??"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const status=(m,e=false)=>{$("status").textContent=m;$("status").className="notice"+(e?" error":"");};
+function num(v,k,i){const n=Number(v);if(v==null||String(v).trim()===""||!Number.isFinite(n))throw Error(`Invalid numeric value in "${k}" at CSV data row ${i+2}.`);return n;}
+function enrich(row,i){const r={...row};for(const k of ["monthly_revenue","billed_amount","activation_delay_days","collection_amount"])r[k]=num(r[k],k,i);
+r.billing_gap=Math.round((r.monthly_revenue-r.billed_amount)*100)/100;r.collection_gap=Math.round((r.billed_amount-r.collection_amount)*100)/100;
+r.billing_anomaly=r.billed_amount<r.monthly_revenue*.5;r.activation_anomaly=r.activation_delay_days>10;r.collection_anomaly=r.collection_amount===0&&r.billed_amount>0;
+r.potential_anomaly=r.billing_anomaly||r.activation_anomaly||r.collection_anomaly;r.anomaly_score=(r.billing_anomaly?3:0)+(r.activation_anomaly?2:0)+(r.collection_anomaly?3:0);
+r.priority=(r.billing_anomaly||r.collection_anomaly)?"High":r.activation_anomaly?"Medium":"No Alert";return r;}
+function setMulti(id,opts,selected=opts){const el=$(id);el.innerHTML="";opts.forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;o.selected=selected.includes(v);el.appendChild(o);});}
+const selected=id=>[...$(id).selectedOptions].map(o=>o.value);
+const groupSum=(rows,g,k)=>{const m=new Map();rows.forEach(r=>m.set(String(r[g]),(m.get(String(r[g]))||0)+Number(r[k]||0)));return [...m.entries()].map(([name,value])=>({name,value})).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));};
+const layout=()=>({paper_bgcolor:"rgba(0,0,0,0)",plot_bgcolor:"rgba(0,0,0,0)",font:{color:"#e5f4ff"},margin:{l:55,r:18,t:18,b:55},legend:{orientation:"h",y:-.25},autosize:true});
+const plot=(id,data,l)=>Plotly.react(id,data,{...layout(),...l},{responsive:true,displaylogo:false});
+function render(){const rs=selected("regions"),ss=selected("services"),ps=selected("priorities");filteredRows=allRows.filter(r=>rs.includes(r.region)&&ss.includes(r.service_type)&&ps.includes(r.priority));
+$("recordCount").textContent=`${fmtInt(filteredRows.length)} records selected`;$("kRecords").textContent=fmtInt(filteredRows.length);$("kRevenue").textContent=fmtCr(sum(filteredRows,"monthly_revenue"));$("kBilled").textContent=fmtCr(sum(filteredRows,"billed_amount"));$("kAlerts").textContent=fmtInt(filteredRows.filter(r=>r.potential_anomaly).length);$("kHigh").textContent=fmtInt(filteredRows.filter(r=>r.priority==="High").length);$("kCollections").textContent=fmtCr(sum(filteredRows,"collection_amount"));$("kGap").textContent=fmtMoney(sum(filteredRows,"billing_gap"));
+const rev=groupSum(filteredRows,"region","monthly_revenue"),bill=groupSum(filteredRows,"region","billed_amount"),names=[...new Set([...rev,...bill].map(x=>x.name))].sort();
+plot("regionChart",[{type:"bar",name:"Revenue",x:names,y:names.map(n=>rev.find(x=>x.name===n)?.value||0),marker:{color:"#52e0d0"}},{type:"bar",name:"Billed",x:names,y:names.map(n=>bill.find(x=>x.name===n)?.value||0),marker:{color:"#5c8dff"}}],{barmode:"group",yaxis:{title:"Amount (₹)",gridcolor:"#24465e"},xaxis:{title:"Region",gridcolor:"#24465e"}});
+const pc=["High","Medium","No Alert"].map(p=>({name:p,value:filteredRows.filter(r=>r.priority===p).length})).filter(x=>x.value>0);
+plot("priorityChart",[{type:"pie",labels:pc.map(x=>x.name),values:pc.map(x=>x.value),hole:.55,textinfo:"label+percent",marker:{colors:["#ff687a","#ffc857","#5c8dff"]}}],{showlegend:true});
+const months=[...new Set(filteredRows.map(r=>String(r.month)))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+plot("monthlyChart",[{type:"scatter",mode:"lines+markers",name:"Revenue",x:months,y:months.map(m=>sum(filteredRows.filter(r=>String(r.month)===m),"monthly_revenue")),line:{color:"#52e0d0",width:3}},{type:"scatter",mode:"lines+markers",name:"Billed",x:months,y:months.map(m=>sum(filteredRows.filter(r=>String(r.month)===m),"billed_amount")),line:{color:"#5c8dff",width:3}}],{xaxis:{title:"Month",gridcolor:"#24465e"},yaxis:{title:"Amount (₹)",gridcolor:"#24465e"}});
+const an=filteredRows.filter(r=>r.potential_anomaly),ar=uniq(filteredRows,"region");plot("alertsRegionChart",[{type:"bar",x:ar,y:ar.map(n=>an.filter(r=>r.region===n).length),marker:{color:"#ffb454"}}],{xaxis:{title:"Region",gridcolor:"#24465e"},yaxis:{title:"Potential alerts",gridcolor:"#24465e"}});
+alertRows=an;const old=$("investigateRegion").value,ars=uniq(alertRows,"region");$("investigateRegion").innerHTML="";["All regions",...ars].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;$("investigateRegion").appendChild(o);});$("investigateRegion").value=["All regions",...ars].includes(old)?old:"All regions";renderTable();}
+function renderTable(){const region=$("investigateRegion").value,rows=alertRows.filter(r=>region==="All regions"||r.region===region).sort((a,b)=>b.anomaly_score-a.anomaly_score);
+$("tableHead").innerHTML="<tr>"+cols.map(c=>`<th>${esc(c.replaceAll("_"," "))}</th>`).join("")+"</tr>";
+$("tableBody").innerHTML=rows.slice(0,1000).map(r=>"<tr>"+cols.map(c=>{if(c==="priority"){const cl=r.priority==="High"?"high":r.priority==="Medium"?"medium":"none";return `<td><span class="pill ${cl}">${esc(r[c])}</span></td>`;}const v=["monthly_revenue","billed_amount","billing_gap","collection_amount","collection_gap"].includes(c)?fmtMoney(r[c]):esc(r[c]);return `<td>${v}</td>`;}).join("")+"</tr>").join("");
+$("emptyAlerts").hidden=rows.length>0;if(rows.length>1000)status("Showing first 1,000 rows in the table; CSV export includes all matching alerts.");}
+function downloadCsv(){const region=$("investigateRegion").value,rows=alertRows.filter(r=>region==="All regions"||r.region===region).sort((a,b)=>b.anomaly_score-a.anomaly_score);const csv=Papa.unparse(rows.map(r=>Object.fromEntries(cols.map(c=>[c,r[c]]))));const url=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"})),a=document.createElement("a");a.href=url;a.download="telecom_anomaly_alerts.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
+$("apply").addEventListener("click",render);$("reset").addEventListener("click",()=>{setMulti("regions",uniq(allRows,"region"));setMulti("services",uniq(allRows,"service_type"));setMulti("priorities",["High","Medium","No Alert"]);$("investigateRegion").value="All regions";render();});$("investigateRegion").addEventListener("change",renderTable);$("download").addEventListener("click",downloadCsv);
+fetch(DATA_URL).then(r=>{if(!r.ok)throw Error(`Could not load ${DATA_URL} (HTTP ${r.status}). Upload the CSV into the data/ folder with this exact filename.`);return r.text();})
+.then(csv=>new Promise((resolve,reject)=>Papa.parse(csv,{header:true,skipEmptyLines:true,complete:resolve,error:reject}))).then(result=>{if(result.errors?.length)throw Error("CSV parsing failed: "+result.errors[0].message);const missing=required.filter(c=>!(result.meta.fields||[]).includes(c));if(missing.length)throw Error("Dataset is missing required columns: "+missing.join(", "));allRows=result.data.map(enrich);if(!allRows.length)throw Error("The CSV has no data rows.");setMulti("regions",uniq(allRows,"region"));setMulti("services",uniq(allRows,"service_type"));setMulti("priorities",["High","Medium","No Alert"]);status(`Loaded ${fmtInt(allRows.length)} synthetic records. Use the filters to explore the dashboard.`);render();})
+.catch(e=>status(e.message||"Unexpected dataset loading error.",true));
+})();
+</script></body></html>
